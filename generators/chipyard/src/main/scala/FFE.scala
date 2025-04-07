@@ -130,13 +130,37 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
     val (stimCounter, _) = Counter(true.B, 8)
     val (srcCounter, _) = Counter(stimCounter === 0.U, 8)
     val ffeIn = ffe.module.io.in
-    ffeIn.bits := Seq.fill(params.numChannels)(stimCounter.asTypeOf(ffeIn.bits.head.cloneType))
+
+    // Read hex file into a Scala array
+    val ffeInputs = {
+      val fileSource = scala.io.Source.fromFile("generators/chipyard/src/main/resources/memory/ffe_in.hex")
+      val lines = try fileSource.getLines().toArray finally fileSource.close()
+      lines.map(line => {
+        // Parse each line as hex values for each channel
+        val values = line.trim.split("\\s+").map(hex => Integer.parseInt(hex, 16).S(params.dataBits.W))
+        VecInit(values.take(params.numChannels))
+      })
+    }
+    val ffeGolden = {
+      val fileSource = scala.io.Source.fromFile("generators/chipyard/src/main/resources/memory/ffe_out.hex")
+      val lines = try fileSource.getLines().toArray finally fileSource.close()
+      lines.map(line => {
+        // Parse each line as hex values for each channel
+        val values = line.trim.split("\\s+").map(hex => Integer.parseInt(hex, 16).S(params.accBits.W))
+        VecInit(values.take(params.numChannels))
+      })
+    }
+    
+    // Convert to hardware lookup table and read using stimCounter
+    val ffeInputsVec = VecInit(ffeInputs)
+    ffeIn.bits := ffeInputsVec(stimCounter)
     ffeIn.valid := true.B
 
     val (n, e) = node.out.head
     n.a.valid := false.B
     n.a.bits := 0.U.asTypeOf(n.a.bits.cloneType)
     n.d.ready := true.B
+    
     when(stimCounter === 0.U) { // every 8 cycles, write weights
       val (legal, a) = e.Put(
         fromSource = srcCounter,
@@ -149,6 +173,18 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
       n.a.valid := true.B
     }
     dontTouch(n.a)
+
+    // check if output matches our golden result
+    for (t <- 0 until 10) {
+      when(stimCounter === t.U) {
+        for (ch <- 0 until params.numChannels) {
+          assert(
+            ffe.module.io.out.bits(ch) === ffeGolden(ch).asTypeOf(ffe.module.io.out.bits(ch).cloneType),
+            "At step %d, channel %d: Expected %d, got %d", t.asUInt, ch.asUInt, ffeGolden(ch).asTypeOf(ffe.module.io.out.bits(ch).cloneType), ffe.module.io.out.bits(ch)
+          )
+        }
+      }
+    }
 
     val (finishCounter, _) = Counter(true.B, timeout + 1)
     io.finished := (finishCounter === timeout.U)
