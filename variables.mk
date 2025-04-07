@@ -66,7 +66,7 @@ HELP_LINES = "" \
 #   - make it so that you only change 1 param to change most or all of them!
 #   - mainly intended for quick developer setup for common flags
 #########################################################################################
-SUB_PROJECT ?= chipyard
+SUB_PROJECT ?= ffe
 
 ifeq ($(SUB_PROJECT),chipyard)
 	SBT_PROJECT       ?= chipyard
@@ -146,6 +146,17 @@ ifeq ($(SUB_PROJECT),tensor)
 	MODEL_PACKAGE     ?= chipyard.unittest
 	CONFIG            ?= TensorUnitTestConfig
 	CONFIG_PACKAGE    ?= radiance.unittest
+	GENERATOR_PACKAGE ?= chipyard
+	TB                ?= TestDriver
+	TOP               ?= UnitTestSuite
+endif
+ifeq ($(SUB_PROJECT),ffe)
+	SBT_PROJECT       ?= chipyard
+	MODEL             ?= TestHarness
+	VLOG_MODEL        ?= $(MODEL)
+	MODEL_PACKAGE     ?= chipyard.unittest
+	CONFIG            ?= FFETestConfig
+	CONFIG_PACKAGE    ?= chipyard.unittest
 	GENERATOR_PACKAGE ?= chipyard
 	TB                ?= TestDriver
 	TOP               ?= UnitTestSuite
