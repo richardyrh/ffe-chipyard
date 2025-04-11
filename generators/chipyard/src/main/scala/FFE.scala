@@ -9,6 +9,8 @@ import freechips.rocketchip.regmapper.{HasRegMap, RegField}
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.unittest._
 import freechips.rocketchip.resources.{SimpleDevice, BigIntHexContext}
+import scala.io.Source
+
 
 /**
   * Parameters for the Ethernet FIR filter
@@ -23,7 +25,7 @@ case class FFEParams(
   weightBits: Int = 8,
   accBits: Int = 18,
   numTaps: Int = 8,
-  initWeights: Seq[Int] = Seq.fill(8)(0),
+  initWeights: Seq[Int],
   numChannels: Int = 4,
   mmioAddr: BigInt = 0,
 )
@@ -150,7 +152,16 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
         VecInit(values.take(params.numChannels))
       })
     }
-    
+
+    // ffeWeights[tap]
+    val ffeWeights = {
+      val fileSource = scala.io.Source.fromFile("generators/chipyard/src/main/resources/memory/taps.hex")
+      val lines = try fileSource.getLines().toArray finally fileSource.close()
+      lines.map(line => {
+        Integer.parseInt(line.trim, 16).S(params.weightBits.W)
+      })
+    }
+
     // Convert to hardware lookup table and read using stimCounter
     val ffeInputsVec = VecInit(ffeInputs)
     ffeIn.bits := ffeInputsVec(stimCounter)
@@ -160,13 +171,15 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
     n.a.valid := false.B
     n.a.bits := 0.U.asTypeOf(n.a.bits.cloneType)
     n.d.ready := true.B
-    
+
+    val weightRegsVec = VecInit(ffeWeights)
+
     when(stimCounter === 0.U) { // every 8 cycles, write weights
       val (legal, a) = e.Put(
         fromSource = srcCounter,
         toAddress = (params.mmioAddr + 0).U,
         lgSize = 3.U,
-        data = x"8badf00ddeadbeef".U
+        data = x"32190c0000000000".U
       )
       assert(legal)
       n.a.bits := a
@@ -180,7 +193,7 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
         for (ch <- 0 until params.numChannels) {
           assert(
             ffe.module.io.out.bits(ch) === ffeGolden(ch).asTypeOf(ffe.module.io.out.bits(ch).cloneType),
-            "At step %d, channel %d: Expected %d, got %d", t.asUInt, ch.asUInt, ffeGolden(ch).asTypeOf(ffe.module.io.out.bits(ch).cloneType), ffe.module.io.out.bits(ch)
+            "At step %d, channel %d: Expected %x, got %x", t.asUInt, ch.asUInt, ffeGolden(ch).asTypeOf(ffe.module.io.out.bits(ch).cloneType), ffe.module.io.out.bits(ch)
           )
         }
       }
