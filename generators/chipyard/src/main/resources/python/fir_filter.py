@@ -4,6 +4,9 @@ import scipy.signal as signal
 import matplotlib.pyplot as plt
 
 
+np.set_printoptions(precision=4)
+
+
 class FirFilterGenerator:
     """
     Generates a FIR filter based on the cable length and number of taps.
@@ -173,15 +176,16 @@ class FirFilterGenerator:
         assert np.all(taps_q >= np.iinfo(np.int8).min) and np.all(taps_q <= np.iinfo(np.int8).max), f"Taps out of bounds of int8: [{np.min(taps_q)}, {np.max(taps_q)}]"
         assert np.all(example_input_q >= np.iinfo(np.int8).min) and np.all(example_input_q <= np.iinfo(np.int8).max), f"Input out of bounds of int8: [{np.min(example_input_q)}, {np.max(example_input_q)}]"
 
-        print("  quantized input:", example_input_q)
-        print("  quantized taps:", taps_q)
+        print("  Quantized taps:", taps_q)
         actual_q = signal.lfilter(taps_q, 1.0, example_input_q).astype(np.int32)
-        print("  filtered signals:", actual_q)
+        print("  Result signals:", actual_q)
 
-        actual = self.dequantize(actual_q, s**2)
-        print("  golden:", golden)
-        print("  actual:", actual)
-        print("  error:", np.max(np.abs(golden - actual)))
+        actual = signal.lfilter(taps_q / 128, 1.0, example_input_q / 128)
+        # actual = self.dequantize(actual_q, s**2)
+
+        print("Golden:", golden)
+        print("Actual:", actual)
+        print("Error:", np.max(np.abs(golden - actual)))
 
         return actual_q
 
