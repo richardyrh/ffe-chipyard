@@ -5,21 +5,53 @@ import matplotlib.pyplot as plt
 
 
 class FirFilterGenerator:
+    """
+    Generates a FIR filter based on the cable length and number of taps.
+    """
     def __init__(self, cable_length: float = 10, num_taps: int = 8, fir_type: int = 4):
+        """
+        Initializes the FIR filter generator.
+
+        Args:
+            cable_length: The length of the cable in meters.
+            num_taps: The number of taps in the FIR filter.
+            fir_type: The type of FIR filter to generate.
+        """
         self.cable_length = cable_length
         self.num_taps = num_taps
         self.fir_type = fir_type
         self.taps = None
     
     @staticmethod
-    def quantize(data: np.ndarray, scale: float = 1e3):
-        return (data * scale).astype(np.int32)
+    def quantize(data: np.ndarray, scale: float = 1e3, max_value: int = 127, min_value: int = -128):
+        """
+        Quantizes the data to the specified scale and range.
+
+        Args:
+            data: The data to quantize.
+            scale: The scaling factor.
+            max_value: The maximum value of the quantized data, this should correspond to the bitwidth of the data type.
+            min_value: The minimum value of the quantized data, this should correspond to the bitwidth of the data type.
+        """
+        q = (data * scale).astype(np.int32)
+        q = np.clip(q, min_value, max_value)
+        return q
     
     @staticmethod
     def dequantize(data: np.ndarray, scale: float = 1e3):
-        return data.astype(np.float32) / scale
+        """
+        Dequantizes the data to the specified scale.
 
+        Args:
+            data: The data to dequantize.
+            scale: The scaling factor.
+        """
+        return data.astype(np.float32) / scale
+    
     def calculate_taps(self) -> np.ndarray:
+        """
+        Calculates the taps for the FIR filter.
+        """
         # Original frequency and attenuation data
         freq_MHz = np.array([0, 1, 4, 8, 10, 16, 20, 25, 31.25, 62.5])
         attenuation_dB = np.array([0, 2.0, 3.8, 5.3, 6.0, 7.6, 8.5, 9.5, 10.7, 15.4])
@@ -32,6 +64,8 @@ class FirFilterGenerator:
 
         # Nyquist frequency (fs/2 = highest freq)
         nyquist_freq = freq_Hz[-1]
+
+        self.nyquist_freq = nyquist_freq
 
         gain = 10 ** (-attenuation_dB / 20)
 
@@ -49,8 +83,7 @@ class FirFilterGenerator:
         fir_taps = signal.firwin2(self.num_taps, freq_Hz / np.max(freq_Hz), gain, fs=2.0, antisymmetric=(self.fir_type % 2 == 0))
 
         # Frequency response visualization
-        freq_response, response = signal.freqz(fir_taps, whole=True) # 8000)
-        # freq_response, response = signal.freqz(fir_taps, worN=8000)
+        freq_response, response = signal.freqz(fir_taps, whole=True)
         plt.figure(figsize=(12, 5))
         ax = plt.subplot(121)
         ax.plot(((freq_response / np.pi) * nyquist_freq / 1e6)[:8000], (20 * np.log10(np.abs(response)))[:8000])
@@ -66,14 +99,16 @@ class FirFilterGenerator:
         return fir_taps
 
     def test_filter(self):
+        """
+        Run a simple test of the filter and generate a plot of the original and filtered signal attenuation.
+        """
         freq_MHz = np.array([1, 4, 8, 10, 16, 20, 25, 31.25, 62.5, 100, 200, 250])
         attenuation_dB = np.array([2.0, 3.8, 5.3, 6.0, 7.6, 8.5, 9.5, 10.7, 15.4, 19.8, 29.0, 32.8])
         attenuation_dB /= (100 / self.cable_length)
 
-        
         freq_Hz = freq_MHz * 1e6
-
-        nyquist_freq = freq_Hz[-1]
+        # nyquist_freq = freq_Hz[-1]
+        nyquist_freq = self.nyquist_freq
 
         # Sampling parameters
         # fs = 1e10  # 1 GHz sampling frequency
@@ -113,11 +148,23 @@ class FirFilterGenerator:
         plt.savefig("fir.png")
     
     def simulate(self, example_input: np.ndarray) -> np.ndarray:
+        """
+        Simulates the FIR filter on the example input.
+
+        Args:
+            example_input: The input to the FIR filter.
+        """
         filtered_signals = signal.lfilter(self.taps, 1.0, example_input)
         return filtered_signals
     
     def simulate_q(self, example_input: np.ndarray, s: float = 1e3) -> np.ndarray:
-        print("==== Running Quanitzed Simulation ====")
+        """
+        Simulates the FIR filter on the example input and quantizes the input and taps.
+
+        Args:
+            example_input: The input to the FIR filter.
+            s: The scaling factor.
+        """
         golden = self.simulate(example_input)
 
         example_input_q = self.quantize(example_input, s)
@@ -137,3 +184,9 @@ class FirFilterGenerator:
         print("  error:", np.max(np.abs(golden - actual)))
 
         return actual_q
+
+
+if __name__ == "__main__":
+    gen = FirFilterGenerator()
+    gen.calculate_taps()
+    gen.test_filter()
