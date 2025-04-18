@@ -16,7 +16,10 @@ import scala.io.Source
   * Parameters for the Ethernet FIR filter
   *
   * @param dataBits - Number of bits in the input data
+  * @param weightBits - Number of bits in the weights
   * @param accBits - Number of bits in the accumulator
+  * @param numTaps - Number of taps in the filter
+  * @param initWeights - Initial weights for the filter
   * @param numChannels - Number of channels (taps) in the filter
   * @param mmioAddr - MMIO address for the filter
   */
@@ -46,7 +49,7 @@ case class FFEParams(
   * val y_7 = RegNext(y_6 + io.weights(0) * io.in)
   * io.out := y_7
   *
-  * @param params
+  * @param params: the configuration of the FIR filter
   */
 class FirFilter(params: FFEParams) extends Module {
   val io = IO(new Bundle {
@@ -96,7 +99,6 @@ class FFE(params: FFEParams)(implicit p: Parameters) extends LazyModule {
       0 -> weightRegFns.map(RegField.w(8, _))
     )
 
-
     weightRegs.foreach(dontTouch(_))
 
     val _firFilters = Seq.tabulate(params.numChannels) { ch =>
@@ -129,12 +131,7 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
   ffe.regNode := TLIdentityNode() := node
 
   lazy val module = new LazyModuleImp(this) with UnitTestModule {
-    val (stimCounter, _) = Counter(true.B, 8)
-    val (srcCounter, _) = Counter(stimCounter === 0.U, 8)
-    val ffeIn = ffe.module.io.in
-
-    // Read hex file into a Scala array
-    val ffeInputs = {
+    val ffe_inputs = VecInit({
       val fileSource = scala.io.Source.fromFile("generators/chipyard/src/main/resources/memory/ffe_in.hex")
       val lines = try fileSource.getLines().toArray finally fileSource.close()
       lines.map(line => {
@@ -142,8 +139,9 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
         val values = line.trim.split("\\s+").map(hex => Integer.parseInt(hex, 16).S(params.dataBits.W))
         VecInit(values.take(params.numChannels))
       })
-    }
-    val ffeGolden = {
+    })
+
+    val ffe_golden = VecInit({
       val fileSource = scala.io.Source.fromFile("generators/chipyard/src/main/resources/memory/ffe_out.hex")
       val lines = try fileSource.getLines().toArray finally fileSource.close()
       lines.map(line => {
@@ -151,56 +149,54 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
         val values = line.trim.split("\\s+").map(hex => Integer.parseInt(hex, 16).S(params.accBits.W))
         VecInit(values.take(params.numChannels))
       })
-    }
+    })
 
-    // ffeWeights[tap]
-    val ffeWeights = {
+    val ffe_weights = VecInit({
       val fileSource = scala.io.Source.fromFile("generators/chipyard/src/main/resources/memory/taps.hex")
       val lines = try fileSource.getLines().toArray finally fileSource.close()
       lines.map(line => {
         Integer.parseInt(line.trim, 16).S(params.weightBits.W)
       })
-    }
+    })
+    
+  
+    val (sim_counter, _) = Counter(true.B, 10000)
+    val (test_sequence_counter, _) = Counter(true.B, ffe_inputs.length)
 
-    // Convert to hardware lookup table and read using stimCounter
-    val ffeInputsVec = VecInit(ffeInputs)
-    ffeIn.bits := ffeInputsVec(stimCounter)
-    ffeIn.valid := true.B
+    
+    ffe.module.io.in.bits := ffe_inputs(test_sequence_counter)
+    ffe.module.io.in.valid := true.B
 
     val (n, e) = node.out.head
-    n.a.valid := false.B
-    n.a.bits := 0.U.asTypeOf(n.a.bits.cloneType)
+    
+    val (legal, a) = e.Put(
+      fromSource = 0.U,
+      toAddress = (params.mmioAddr + 0).U,
+      lgSize = 3.U,
+      data = VecInit(ffe_weights.map(_.asUInt + 1.U)).asUInt
+    )
+    assert(legal)
+
+    n.a.bits := a
+    n.a.valid := (sim_counter === 20.U)
     n.d.ready := true.B
-
-    val weightRegsVec = VecInit(ffeWeights)
-
-    when(stimCounter === 0.U) { // every 8 cycles, write weights
-      val (legal, a) = e.Put(
-        fromSource = srcCounter,
-        toAddress = (params.mmioAddr + 0).U,
-        lgSize = 3.U,
-        data = x"32190c0000000000".U
-      )
-      assert(legal)
-      n.a.bits := a
-      n.a.valid := true.B
-    }
+    
     dontTouch(n.a)
+    dontTouch(n.d)
 
-    // check if output matches our golden result
-    for (t <- 0 until 10) {
-      when(stimCounter === t.U) {
-        for (ch <- 0 until params.numChannels) {
-          assert(
-            ffe.module.io.out.bits(ch) === ffeGolden(ch).asTypeOf(ffe.module.io.out.bits(ch).cloneType),
-            "At step %d, channel %d: Expected %x, got %x", t.asUInt, ch.asUInt, ffeGolden(ch).asTypeOf(ffe.module.io.out.bits(ch).cloneType), ffe.module.io.out.bits(ch)
-          )
-        }
+
+    (0 until params.numChannels).foreach(ch => {
+      val dutBits = ffe.module.io.out.bits(ch)
+      val goldenBits = ffe_golden(test_sequence_counter)(ch)
+      when (sim_counter === test_sequence_counter) {
+        assert(dutBits === goldenBits.asTypeOf(dutBits.cloneType),
+              "At step %d, channel %d: Expected %x, got %x",
+              sim_counter.asUInt, ch.asUInt, goldenBits, dutBits)
       }
-    }
+    })
 
-    val (finishCounter, _) = Counter(true.B, timeout + 1)
-    io.finished := (finishCounter === timeout.U)
+    val (timeout_counter, _) = Counter(true.B, timeout + 1)
+    io.finished := (timeout_counter === timeout.U)
   }
 }
 
