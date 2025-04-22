@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 from fir_filter import FirFilterGenerator
 from pam5_symbol_generator import Pam5SymbolGenerator
+from ethernet_channel import GenericEthernetCable, EthernetChannel
 
 
 np.random.seed(420)
@@ -11,11 +12,6 @@ np.random.seed(420)
 
 simulation_frequency = 125e6 # Hz
 sampling_frequency = 125e6 # Hz
-
-# Define target SNR in dB
-target_snr_db = 20
-lowpass_cutoff = 125e6 / 4  # Hz
-
 
 n_symbols = 100
 duration = n_symbols * (1 / sampling_frequency)
@@ -33,46 +29,17 @@ pam5_symbols = Pam5SymbolGenerator.random(n_symbols)
 
 print(f"Symbols: {pam5_symbols}")
 
+
 # convert the symbols to fill real-time clock
-pam5_signal_base = np.repeat(pam5_symbols, simulation_frequency // sampling_frequency) / 2
-# pass through DAC (i.e. scale by 0x3F and convert to single ended)
-# pam5_signal = (pam5_signal_base + 2) * 0x3F
-pam5_signal = pam5_signal_base
-
-# low pass filter the signal
-# pam5_signal = signal.lfilter([1], [1, -lowpass_cutoff], pam5_signal)
-
-# apply convolution smoothing
-window_size = int(sampling_frequency // lowpass_cutoff)
-pam5_signal = pam5_signal # + np.convolve(pam5_signal, np.ones(window_size) / window_size, mode="valid")
+pam5_signal = np.repeat(pam5_symbols, simulation_frequency // sampling_frequency) / 2
 
 
 # Model channel attenuation
 cable_length = 50
 
-freq_MHz = np.array([0, 1, 4, 8, 10, 16, 20, 25, 31.25, 62.5, 100])
-attenuation_dB = np.array([0, 2.0, 3.8, 5.3, 6.0, 7.6, 8.5, 9.5, 10.7, 15.4, 19.8])
-attenuation_dB *= (cable_length / 100)
+channel = EthernetChannel(GenericEthernetCable, cable_length)
 
-# attenuate the signal at each frequency
-# Perform FFT to transform the signal to the frequency domain
-pam5_signal_freq = np.fft.fft(pam5_signal)
-
-# Create a frequency axis
-freq_axis = np.fft.fftfreq(len(pam5_signal), d=1/simulation_frequency)
-
-# Interpolate the attenuation values to match the frequency axis
-attenuation_interp = np.interp(np.abs(freq_axis), freq_MHz * 1e6, attenuation_dB)
-
-# Convert attenuation from dB to linear scale
-attenuation_linear = 10 ** (-attenuation_interp / 20)
-
-# Apply the attenuation to the frequency domain signal
-pam5_signal_freq_attenuated = pam5_signal_freq * attenuation_linear
-
-# Transform the attenuated signal back to the time domain
-pam5_signal_noisy = np.fft.ifft(pam5_signal_freq_attenuated).real
-
+pam5_signal_noisy = channel.attenuate(pam5_signal, simulation_frequency)
 
 
 # create time axis
@@ -91,23 +58,11 @@ symbol_boundaries = np.arange(0, len(pam5_signal), simulation_frequency // sampl
 for i in range(n_symbols):
     plt.axvline(x=symbol_boundaries[i], color="k", linestyle="--", alpha=0.5)
 
-# draw triangle to represent sampling point
-# samping_offset = 0.25 * (1 / sampling_frequency) * 1e9
-# samping_offset_s = e-9
-
-# sampled_points = []
-
-# print(f"Samping offset: {samping_offset_s * 1e9} ns")
-# for i in range(len(symbol_boundaries)):
-#     index = int(symbol_boundaries[i] + samping_offset_s * 1e9)
-#     if index < len(pam5_signal):
-#         plt.plot([symbol_boundaries[i] + samping_offset_s * 1e9], [pam5_signal_noisy[index]], 'ro', alpha=0.5)
-#         sampled_points.append(pam5_signal_noisy[index])
 
 plt.xlabel("Time (ns)")
 plt.ylabel("Amplitude (LSB)")
-plt.title("PAM5 Signal and Noisy Signal")
-plt.legend(["Original", "Noisy"])
+plt.title("PAM5 Signal and Attenuated Signal")
+plt.legend(["Original", "Attenuated"])
 
 plt.savefig("test_pam5_signal.png")
 
@@ -117,9 +72,7 @@ plt.close()
 
 
 gen = FirFilterGenerator()
-
-taps = gen.calculate_taps(cable_length=cable_length)
-
+taps = gen.calculate_taps(channel_profile=GenericEthernetCable, cable_length=cable_length)
 
 result = gen.simulate(pam5_signal_noisy)
 
@@ -130,9 +83,10 @@ output_power = np.max(np.abs(result))
 print(f"Input Power: {input_power:.2f}")
 print(f"Output Power: {output_power:.2f}")
 
-print(f"attenuation: {10 * np.log10(output_power / input_power):.2f} dB, {output_power / input_power:.2f} LSB")
+attenuation = output_power / input_power
+attenuation_lsb = attenuation * 0xFF
 
-
+print(f"Attenuation: {10 * np.log10(attenuation):.2f} dB, {attenuation_lsb:.2f} LSB")
 
 plt.clf()
 plt.close()

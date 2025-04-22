@@ -3,6 +3,8 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
+from ethernet_channel import EthernetChannelProfile
+
 
 np.set_printoptions(precision=4)
 
@@ -51,7 +53,7 @@ class FirFilterGenerator:
         """
         return data.astype(np.float32) / scale
     
-    def calculate_taps(self, cable_length) -> np.ndarray:
+    def calculate_taps(self, channel_profile: EthernetChannelProfile, cable_length: float = 100) -> np.ndarray:
         """
         Calculates the taps for the FIR filter.
         """
