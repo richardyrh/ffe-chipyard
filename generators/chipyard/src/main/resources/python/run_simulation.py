@@ -3,6 +3,7 @@ import scipy.signal as signal
 import matplotlib.pyplot as plt
 
 from fir_filter import FirFilterGenerator
+from pam5_symbol_generator import Pam5SymbolGenerator
 
 
 np.random.seed(420)
@@ -12,24 +13,28 @@ simulation_frequency = 125e6 # Hz
 sampling_frequency = 125e6 # Hz
 
 # Define target SNR in dB
-# target_snr_db = 100
-# lowpass_cutoff = 0.
-
 target_snr_db = 20
 lowpass_cutoff = 125e6 / 4  # Hz
 
 
-n_symbols = 50
+n_symbols = 100
 duration = n_symbols * (1 / sampling_frequency)
 
 print(f"Duration: {duration} s")
 
-# create symbols to send, in range {-2, -1, 0, 1, 2}
-pam5_symbols = np.random.randint(-2, 3, n_symbols, dtype=np.int8).astype(np.float32) / 2
+# === create symbols to send, in range {-2, -1, 0, 1, 2} ===
+
+pam5_symbols = Pam5SymbolGenerator.random(n_symbols)
+# pam5_symbols = Pam5SymbolGenerator.alternate_01(n_symbols)
+# pam5_symbols = Pam5SymbolGenerator.alternate_02(n_symbols)
+# pam5_symbols = Pam5SymbolGenerator.alternate_012(n_symbols)
+# pam5_symbols = Pam5SymbolGenerator.sine_wave(n_symbols)
+# pam5_symbols = Pam5SymbolGenerator.sawtooth_wave(n_symbols)
+
 print(f"Symbols: {pam5_symbols}")
 
 # convert the symbols to fill real-time clock
-pam5_signal_base = np.repeat(pam5_symbols, simulation_frequency // sampling_frequency).astype(np.float32)
+pam5_signal_base = np.repeat(pam5_symbols, simulation_frequency // sampling_frequency) / 2
 # pass through DAC (i.e. scale by 0x3F and convert to single ended)
 # pam5_signal = (pam5_signal_base + 2) * 0x3F
 pam5_signal = pam5_signal_base
@@ -41,21 +46,8 @@ pam5_signal = pam5_signal_base
 window_size = int(sampling_frequency // lowpass_cutoff)
 pam5_signal = pam5_signal # + np.convolve(pam5_signal, np.ones(window_size) / window_size, mode="valid")
 
-# # Calculate signal power
-# signal_power = np.var(pam5_signal)
-# # Calculate required noise power based on target SNR
-# noise_power = signal_power / (10 ** (target_snr_db / 10))
 
-# # Add noise to the signal
-# noise = np.random.randn(len(pam5_signal)) * np.sqrt(noise_power)
-# pam5_signal_noisy = pam5_signal + noise
-
-# # Verify actual SNR
-# actual_signal_power = np.var(pam5_signal)
-# actual_noise_power = np.var(noise)
-# actual_snr_db = 10 * np.log10(actual_signal_power / actual_noise_power)
-# print(f"Target SNR: {target_snr_db:.2f} dB")
-# print(f"Actual SNR: {actual_snr_db:.2f} dB")
+# Model channel attenuation
 cable_length = 50
 
 freq_MHz = np.array([0, 1, 4, 8, 10, 16, 20, 25, 31.25, 62.5, 100])
@@ -80,6 +72,7 @@ pam5_signal_freq_attenuated = pam5_signal_freq * attenuation_linear
 
 # Transform the attenuated signal back to the time domain
 pam5_signal_noisy = np.fft.ifft(pam5_signal_freq_attenuated).real
+
 
 
 # create time axis
@@ -129,6 +122,17 @@ taps = gen.calculate_taps(cable_length=cable_length)
 
 
 result = gen.simulate(pam5_signal_noisy)
+
+# show the attenuation before and after the filter
+input_power = np.max(np.abs(pam5_signal_noisy))
+output_power = np.max(np.abs(result))
+
+print(f"Input Power: {input_power:.2f}")
+print(f"Output Power: {output_power:.2f}")
+
+print(f"attenuation: {10 * np.log10(output_power / input_power):.2f} dB, {output_power / input_power:.2f} LSB")
+
+
 
 plt.clf()
 plt.close()
