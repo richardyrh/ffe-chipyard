@@ -27,6 +27,7 @@ pam5_symbols = Pam5SymbolGenerator.random(n_symbols)
 # pam5_symbols = Pam5SymbolGenerator.sine_wave(n_symbols)
 # pam5_symbols = Pam5SymbolGenerator.sawtooth_wave(n_symbols)
 
+
 print(f"Symbols: {pam5_symbols}")
 
 
