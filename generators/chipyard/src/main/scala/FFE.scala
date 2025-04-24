@@ -21,7 +21,7 @@ import freechips.rocketchip.resources.{SimpleDevice, BigIntHexContext}
 case class FFEParams(
   dataBits: Int = 8,
   weightBits: Int = 8,
-  accBits: Int = 18,
+  accBits: Int = 8,
   numTaps: Int = 8,
   initWeights: Seq[Int] = Seq.fill(8)(0),
   numChannels: Int = 4,
@@ -47,27 +47,34 @@ case class FFEParams(
   * @param params
   */
 class FirFilter(params: FFEParams) extends Module {
+  def truncateProduct(x: SInt): SInt = {
+    val maxBits = params.weightBits + params.dataBits
+    val prodBits = params.accBits - log2Ceil(params.numTaps)
+    (x.asTypeOf(UInt(maxBits.W)) >> (maxBits - prodBits)).asTypeOf(SInt(prodBits.W))
+  }
+
   val io = IO(new Bundle {
     val in = Input(SInt(params.dataBits.W))
     val weights = Input(Vec(params.numTaps, SInt(params.weightBits.W)))
     val out = Output(SInt(params.accBits.W))
   })
 
-  val inStage1 = Reg(Vec(4, io.in.cloneType))
+  val inStage1 = RegInit(0.U.asTypeOf(Vec(4, io.in.cloneType)))
   dontTouch(inStage1)
   val inStage2 = inStage1.flatMap { s1 =>
+    s1 := io.in
     val s2 = WireInit(VecInit.fill(params.numTaps / 4)(s1))
     dontTouch(s2)
     s2
   }
   assert(inStage2.length == params.numTaps, "numTaps is not a multiple of 4")
 
-  val ys = Wire(Vec(params.numTaps, SInt(params.accBits.W)))
+  val ys = WireInit(0.U.asTypeOf(Vec(params.numTaps, SInt(params.accBits.W))))
 
-  ys(0) := io.weights(params.numTaps - 1) * inStage2(0)
+  ys(0) := truncateProduct(io.weights(params.numTaps - 1) * inStage2(0)).asTypeOf(ys(0).cloneType)
   
   for (i <- 1 until params.numTaps) {
-    ys(i) := RegNext(ys(i - 1)) + io.weights(params.numTaps - i - 1) * inStage2(i)
+    ys(i) := RegNext(ys(i - 1)) + truncateProduct(io.weights(params.numTaps - i - 1) * inStage2(i))
   }
   
   io.out := RegNext(ys.last)

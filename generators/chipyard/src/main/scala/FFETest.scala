@@ -20,7 +20,7 @@ class WithFFETests extends Config((site, _, _) => { case UnitTests => (q: Parame
       FFEParams(
         dataBits = 8,
         weightBits = 8,
-        accBits = 18,
+        accBits = 8,
         numTaps = 8,
         initWeights = Seq(1, 3, 15, 74, -74, -15, -3, -1),
         numChannels = 4,
