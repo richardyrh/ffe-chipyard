@@ -53,15 +53,24 @@ class FirFilter(params: FFEParams) extends Module {
     val out = Output(SInt(params.accBits.W))
   })
 
+  val inStage1 = Reg(Vec(4, io.in.cloneType))
+  dontTouch(inStage1)
+  val inStage2 = inStage1.flatMap { s1 =>
+    val s2 = WireInit(VecInit.fill(params.numTaps / 4)(s1))
+    dontTouch(s2)
+    s2
+  }
+  assert(inStage2.length == params.numTaps, "numTaps is not a multiple of 4")
+
   val ys = Wire(Vec(params.numTaps, SInt(params.accBits.W)))
 
-  ys(0) := io.weights(params.numTaps - 1) * io.in
+  ys(0) := io.weights(params.numTaps - 1) * inStage2(0)
   
   for (i <- 1 until params.numTaps) {
-    ys(i) := RegNext(ys(i - 1)) + io.weights(params.numTaps - i - 1) * io.in
+    ys(i) := RegNext(ys(i - 1)) + io.weights(params.numTaps - i - 1) * inStage2(i)
   }
   
-  io.out := RegNext(ys(params.numTaps - 1))
+  io.out := RegNext(ys.last)
 }
 
 
