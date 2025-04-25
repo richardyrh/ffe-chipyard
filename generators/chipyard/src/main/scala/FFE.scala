@@ -1,4 +1,8 @@
 package chipyard.example
+import chisel3.experimental.{annotate, ChiselAnnotation}
+import firrtl.annotations._
+import firrtl.transforms._
+import firrtl.RenameMap
 
 import chisel3._
 import chisel3.util._
@@ -27,7 +31,6 @@ case class FFEParams(
   numChannels: Int = 4,
   mmioAddr: BigInt = 0,
 )
-
 
 /**
   * FIR filter
@@ -59,13 +62,20 @@ class FirFilter(params: FFEParams) extends Module {
     val out = Output(SInt(params.accBits.W))
   })
 
-  val inStage1 = RegInit(0.U.asTypeOf(Vec(4, io.in.cloneType)))
-  dontTouch(inStage1)
+  val inStage1 = Seq.fill(4) {
+    val s1 = RegNext(io.in)
+    dontTouch(s1)
+    addAttribute(s1, "keep", "true")
+    s1
+  }
+
   val inStage2 = inStage1.flatMap { s1 =>
-    s1 := io.in
-    val s2 = WireInit(VecInit.fill(params.numTaps / 4)(s1))
-    dontTouch(s2)
-    s2
+    Seq.fill(params.numTaps / 4) {
+      val s2 = WireInit((s1))
+      dontTouch(s2)
+      addAttribute(s2, "keep", "true")
+      s2
+    }
   }
   assert(inStage2.length == params.numTaps, "numTaps is not a multiple of 4")
 
