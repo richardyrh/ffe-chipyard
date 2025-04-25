@@ -1,0 +1,40 @@
+# Tool options
+
+# Generate Make include to aid in flow
+vlsi.core.build_system: make
+# Genus options
+vlsi.core.synthesis_tool: "hammer.synthesis.genus"
+synthesis.genus.genus_bin: "/tools/cadence/DDI/DDI231_ISR4/GENUS231/bin/genus"
+# synthesis.genus.genus_bin: "/tools/cadence/DDI/DDI221/GENUS221/bin/genus"
+# Innovus options
+vlsi.core.par_tool: "hammer.par.innovus"
+par.innovus.innovus_bin: "/tools/cadence/DDI/DDI231_ISR4/INNOVUS231/bin/innovus"
+# par.innovus.innovus_bin: "/tools/cadence/DDI/DDI221/INNOVUS221/bin/innovus"
+par.innovus.version: "231"
+par.innovus.design_flow_effort: "standard"
+par.inputs.gds_merge: true
+# Pegasus options
+vlsi.core.drc_tool: "hammer.drc.pegasus"
+drc.pegasus.pegasus_bin: "/tools/cadence/PEGASUS/PEGASUS231/bin/pegasus"
+vlsi.core.lvs_tool: "hammer.lvs.pegasus"
+lvs.pegasus.pegasus_bin: "/tools/cadence/PEGASUS/PEGASUS231/bin/pegasus"
+# VCS/Verdi options
+vlsi.core.sim_tool: "hammer.sim.vcs"
+sim.vcs.version: "S_2021.09-SP1-1"
+sim.vcs.vcs_bin: "/tools/synopsys/vcs/S_2021.09-SP1-1/bin/vcs"
+sim.vcs.vcs_home: "/tools/synopsys/vcs/S_2021.09-SP1-1/"
+sim.vcs.verdi_bin: "/tools/synopsys/verdi/S_2021.09-SP1-1/bin/verdi"
+sim.vcs.verdi_home: "/tools/synopsys/verdi/S_2021.09-SP1-1/"
+sim.outputs.waveforms: "/tools/C/yrh/251b/chipyard/vlsi/output"
+# Voltus options
+vlsi.core.power_tool: "hammer.power.voltus"
+power.voltus.voltus_bin: "/tools/cadence/SSV/SSV221/bin/voltus"
+power.voltus.version: "221"
+vlsi.core.power_tool_path: ["hammer-cadence-plugins/power"]
+vlsi.core.power_tool_path_meta: "append"
+power.voltus.lef_layer_map: "/tools/C/yrh/251b/chipyard/vlsi/hammer/hammer/technology/sky130/voltus_qrc_lef.map"
+
+# Hammer will auto-generate a CPF for simple power designs; see hammer/src/hammer-vlsi/defaults.yml for more info
+vlsi.inputs.power_spec_mode: "auto"
+vlsi.inputs.power_spec_type: "cpf"
+

@@ -1,0 +1,46 @@
+# Technology Setup
+# Technology used is Sky130
+vlsi.core.technology: "hammer.technology.sky130"
+
+vlsi.core.max_threads: 72
+
+# Technology paths
+technology.sky130:
+  sky130A: "/tools/C/yrh/251b/sky130_new/sky130/open_pdks/sky130/sky130A"  
+  sram22_sky130_macros: "/tools/C/yrh/251b/sky130_new/sky130/sram22_sky130_macros"  
+  # drc_blackbox_srams: true
+  # lvs_blackbox_srams: true
+  sky130_cds: "/tools/C/yrh/251b/sky130/sky130_cds/sky130_release_0.0.4"
+  sky130_scl: "/tools/C/yrh/251b/sky130/sky130_cds/sky130_scl_9T_0.0.5"
+  stdcell_library: "sky130_scl"
+
+  technology.core.stackup: "sky130_scl"
+  vlsi.technology.placement_site: "CoreSite"
+  # # SRAM compiler options
+  # vlsi.core.sram_generator_tool: "hammer.technology.sky130.sram_compiler"
+  # 
+  # vlsi.technology.extra_libraries:
+  #   - library:
+  #       nldm_liberty_file: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro_tt_025C_1v80.rc.lib"
+  #       verilog_sim: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro.v"
+  #       lef_file: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro.lef"
+  #       gds_file: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro.gds"
+  #       corner: {nmos: typical, pmos: typical, temperature: "025 C"}
+  #       supplies: {VDD: "1.80 V", GND: "0 V"}
+  #       provides: [ {lib_type: stdcell, vt: RVT} ]
+  #   - library:
+  #       nldm_liberty_file: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro_tt_025C_1v80.rc.lib"
+  #       verilog_sim: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro.v"
+  #       lef_file: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro.lef"
+  #       gds_file: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro.gds"
+  #       corner: {nmos: slow, pmos: slow, temperature: "100 C"}
+  #       supplies: {VDD: "1.60 V", GND: "0 V"}
+  #       provides: [ {lib_type: stdcell, vt: RVT} ] 
+  #   - library:
+  #       nldm_liberty_file: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro_tt_025C_1v80.rc.lib"
+  #       verilog_sim: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro.v"
+  #       lef_file: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro.lef"
+  #       gds_file: "/tools/C/yrh/251b/chipyard/vlsi/macros/sram22_64x32m4w32_macro/sram22_64x32m4w32_macro.gds"
+  #       corner: {nmos: fast, pmos: fast, temperature: "-40 C"}
+  #       supplies: {VDD: "1.95 V", GND: "0 V"}
+  #       provides: [ {lib_type: stdcell, vt: RVT} ]

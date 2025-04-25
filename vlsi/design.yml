@@ -2,7 +2,7 @@
 
 # Generate Make include to aid in flow
 vlsi.core.build_system: make
-vlsi.core.max_threads: 12
+vlsi.core.max_threads: 72
 
 # Hammer will auto-generate a CPF for simple power designs; see hammer/src/hammer-vlsi/defaults.yml for more info
 vlsi.inputs.power_spec_mode: "auto"
@@ -10,7 +10,7 @@ vlsi.inputs.power_spec_type: "cpf"
 
 # Specify clock signals
 vlsi.inputs.clocks: [
-  {name: "clock_uncore", period: "2ns", uncertainty: "0.1ns"}
+  {name: "clock", period: "8ns", uncertainty: "0.1ns"}
 ]
 
 # Specify pin properties
@@ -22,14 +22,14 @@ vlsi.inputs.pin.generate_mode: semi_auto
 # Specify the floorplan
 # Default floor plan can be set by the tool
 # The path name should match the VLSI_TOP makefile parameter if it is set
-par.innovus.floorplan_mode: "auto"
+# par.innovus.floorplan_mode: "auto"
 vlsi.inputs.placement_constraints:
-  - path: "ChipTop"
+  - path: "FFE"
     type: toplevel
     x: 0
     y: 0
-    width: 300
-    height: 300
+    width: 400
+    height: 400
     margins:
       left: 0
       right: 0
