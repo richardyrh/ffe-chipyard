@@ -13,16 +13,16 @@ np.random.seed(420)
 simulation_frequency = 125e6 # Hz
 sampling_frequency = 125e6 # Hz
 
-n_symbols = 10
+n_symbols = 20
 duration = n_symbols * (1 / sampling_frequency)
 
 print(f"Duration: {duration} s")
 
 # === create symbols to send, in range {-2, -1, 0, 1, 2} ===
 
-pam5_symbols = Pam5SymbolGenerator.random(n_symbols)
+# pam5_symbols = Pam5SymbolGenerator.random(n_symbols)
 # pam5_symbols = Pam5SymbolGenerator.alternate_01(n_symbols)
-# pam5_symbols = Pam5SymbolGenerator.alternate_02(n_symbols)
+pam5_symbols = Pam5SymbolGenerator.alternate_02(n_symbols)
 # pam5_symbols = Pam5SymbolGenerator.alternate_012(n_symbols)
 # pam5_symbols = Pam5SymbolGenerator.sine_wave(n_symbols)
 # pam5_symbols = Pam5SymbolGenerator.sawtooth_wave(n_symbols)
@@ -36,7 +36,7 @@ pam5_signal = np.repeat(pam5_symbols, simulation_frequency // sampling_frequency
 
 
 # Model channel attenuation
-cable_length = 50
+cable_length = 1
 
 channel = EthernetChannel(GenericEthernetCable, cable_length)
 
@@ -78,7 +78,7 @@ taps = gen.calculate_taps(channel_profile=GenericEthernetCable, cable_length=cab
 result = gen.simulate(pam5_signal_attenuated)
 
 # cancel out the delay of the filter
-symb_delay = 2
+symb_delay = 1
 result = result[symb_delay:]
 pam5_symbols = pam5_symbols[:-symb_delay]
 pam5_signal_attenuated = pam5_signal_attenuated[:-symb_delay]

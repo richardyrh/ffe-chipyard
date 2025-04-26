@@ -23,7 +23,7 @@ import os
 import numpy as np
 
 from fir_filter import FirFilterGenerator
-from ethernet_channel import GenericEthernetCable
+from generators.chipyard.src.main.resources.python.simulator.ethernet_channels import GenericEthernetCable
 
 
 np.set_printoptions(precision=4)

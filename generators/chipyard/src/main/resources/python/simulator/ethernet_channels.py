@@ -13,45 +13,40 @@ class EthernetChannelProfile:
     attenuation_db: np.ndarray = MISSING  # dB / 100 m
 
 
-class GenericEthernetCable(EthernetChannelProfile):
-    freq_mhz = np.array([0, 1, 4, 8, 10, 16, 20, 25, 31.25, 62.5, 100])
-    attenuation_db = np.array([0, 2.0, 3.8, 5.3, 6.0, 7.6, 8.5, 9.5, 10.7, 15.4, 19.8])
+# https://www.molex.com/pdm_docs/sd/796081000_sd.pdf
+class MolexCable(EthernetChannelProfile):
+    freq_mhz        = np.array([  0,     1,     4,     8,    10,    16,    20,    25, 31.25,  62.5,   100,   125,   200,   250, ])
+    attenuation_db  = np.array([1.0,   2.0,   3.8,   5.3,   6.0,   7.6,   8.5,   9.5,  10.7,  15.4,  19.8,  22.4,  29.0,  32.8, ])
 
 
 # https://www.mouser.com/pdfdocs/AmphenolPCDCat6Cable.PDF?srsltid=AfmBOopG1adWqhWubfl4_4myw3_lfCQffIrgziSVXLf1fljtON-CFfcO
 class AmphenolCable(EthernetChannelProfile):
-    freq_mhz = np.array([     1,     4,     8,    10,    16,    20,    25, 31.25,  62.5,   100,   200,   250, ])
-    attenuation_db = np.array([   3.1,   5.8,   8.0,   9.0,  11.4,  12.8,  14.1,  16.1,  23.2,  29.9,  43.7,  49.7, ])
+    freq_mhz        = np.array([     1,     4,     8,    10,    16,    20,    25, 31.25,  62.5,   100,   200,   250, ])
+    attenuation_db  = np.array([   3.1,   5.8,   8.0,   9.0,  11.4,  12.8,  14.1,  16.1,  23.2,  29.9,  43.7,  49.7, ])
 
 
 # https://its.dlink.co.in/assets/patt_1529307287.pdf
 class DLinkCable(EthernetChannelProfile):
-    freq_mhz = np.array([     1,     4,     8,    10,    16,    20,    25, 31.25,  62.5,   100,   200,   250,   500,   600, ])
-    attenuation_db = np.array([   2.0,   3.8,   5.3,   6.0,   7.6,   8.5,   9.5,  10.7,  15.4,  19.8,  29.0,  32.8,  45.3,    51, ])
+    freq_mhz        = np.array([     1,     4,     8,    10,    16,    20,    25, 31.25,  62.5,   100,   200,   250,   500,   600, ])
+    attenuation_db  = np.array([   2.0,   3.8,   5.3,   6.0,   7.6,   8.5,   9.5,  10.7,  15.4,  19.8,  29.0,  32.8,  45.3,    51, ])
 
 
 # https://www.farnell.com/datasheets/35178.pdf
 class AlcatelCable(EthernetChannelProfile):
-    freq_mhz = np.array([     1,     4,    10,    16,    20,    25, 31.25,  62.5,   100,   155,   200,   250,   300,   350, ])
-    attenuation_db = np.array([   1.9,   3.8,   5.9,   7.5,   8.4,  10.6,  15.1,  19.4,  24.5,  28.0,  31.7,  35.0,  38.1,  41.0, ])
-
-
-# https://www.molex.com/pdm_docs/sd/796081000_sd.pdf
-class MolexCable(EthernetChannelProfile):
-    freq_mhz = np.array([     1,     4,     8,    10,    16,    20,    25, 31.25,  62.5,   100,   125,   200,   250, ])
-    attenuation_db = np.array([   2.0,   3.8,   5.3,   6.0,   7.6,   8.5,   9.5,  10.7,  15.4,  19.8,  22.4,  29.0,  32.8, ])
+    freq_mhz        = np.array([     1,     4,    10,    16,    20,    25, 31.25,  62.5,   100,   155,   200,   250,   300,   350, ])
+    attenuation_db  = np.array([   1.9,   3.8,   5.9,   7.5,   8.4,  10.6,  15.1,  19.4,  24.5,  28.0,  31.7,  35.0,  38.1,  41.0, ])
 
 
 # https://www.com-cables.com/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/c/a/cat6-uutp-24-awg-cca-105076.pdf
 class ComCables(EthernetChannelProfile):
-    freq_mhz = np.array([     1,     4,     8,    10,    16,    20,    25, 31.25,  62.5,   100,   155,   200,   250,   300,   350,   400,   450,   500,   550, ])
-    attenuation_db = np.array([   2.0,   3.8,   5.3,   5.9,   7.4,   8.3,   9.3,  10.4,  14.9,  19.0,  23.9,  27.4,  30.8,  34.0,  37.0,  39.7,  42.1,  44.9,  47.3, ])
+    freq_mhz        = np.array([     1,     4,     8,    10,    16,    20,    25, 31.25,  62.5,   100,   155,   200,   250,   300,   350,   400,   450,   500,   550, ])
+    attenuation_db  = np.array([   2.0,   3.8,   5.3,   5.9,   7.4,   8.3,   9.3,  10.4,  14.9,  19.0,  23.9,  27.4,  30.8,  34.0,  37.0,  39.7,  42.1,  44.9,  47.3, ])
 
 
 # https://leviton.com/content/dam/leviton/network-solutions/product_documents/product_specification/cat6-uutp-24-awg-cca-105076.pdf
 class LevitonCable(EthernetChannelProfile):
-    freq_mhz = np.array([     1,     4,    10,    20,   100,   200,   250, ])
-    attenuation_db = np.array([   2.0,   3.8,   6.0,   8.5,  19.9,  29.0,  32.8, ])
+    freq_mhz        = np.array([     1,     4,    10,    20,   100,   200,   250, ])
+    attenuation_db  = np.array([   2.0,   3.8,   6.0,   8.5,  19.9,  29.0,  32.8, ])
 
 
 class EthernetChannel:
