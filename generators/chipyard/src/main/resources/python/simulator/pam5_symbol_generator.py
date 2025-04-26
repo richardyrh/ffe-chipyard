@@ -17,15 +17,23 @@ class Pam5SymbolGenerator:
         return Pam5SymbolGenerator.add_zeros(symbols, prepend_zeros, append_zeros)
 
     @staticmethod
+    def dc(n_symbols: int, value: int, prepend_zeros: int = 10, append_zeros: int = 10) -> np.ndarray:
+        """
+        Generate a DC signal with a constant value
+        """
+        symbols = np.full(n_symbols, value, dtype=np.float32)
+        return Pam5SymbolGenerator.add_zeros(symbols, prepend_zeros, append_zeros)
+
+    @staticmethod
     def alternate_01(n_symbols: int, prepend_zeros: int = 10, append_zeros: int = 10) -> np.ndarray:
         """
         Generate a PAM5 symbol sequence that alternates between {-1, 0, 1, 0}
         """
         symbols = np.zeros(n_symbols, dtype=np.float32)
-        symbols[0::4] = -1
-        symbols[1::4] = 0
-        symbols[2::4] = 1
-        symbols[3::4] = 0
+        symbols[0::4] = 0
+        symbols[1::4] = 1
+        symbols[2::4] = 0
+        symbols[3::4] = -1
         return Pam5SymbolGenerator.add_zeros(symbols, prepend_zeros, append_zeros)
 
     @staticmethod
@@ -34,10 +42,10 @@ class Pam5SymbolGenerator:
         Generate a PAM5 symbol sequence that alternates between {-2, 0, 2, 0}
         """
         symbols = np.zeros(n_symbols, dtype=np.float32)
-        symbols[0::4] = -2
-        symbols[1::4] = 0
-        symbols[2::4] = 2
-        symbols[3::4] = 0
+        symbols[0::4] = 0
+        symbols[1::4] = 2
+        symbols[2::4] = 0
+        symbols[3::4] = -2
         return Pam5SymbolGenerator.add_zeros(symbols, prepend_zeros, append_zeros)
 
     @staticmethod
@@ -46,14 +54,14 @@ class Pam5SymbolGenerator:
         Generate a PAM5 symbol sequence that alternates between {-2, -1, 0, 1, 2, 1, 0, -1}
         """
         symbols = np.zeros(n_symbols, dtype=np.float32)
-        symbols[0::8] = -2
-        symbols[1::8] = -1
-        symbols[2::8] = 0
-        symbols[3::8] = 1
-        symbols[4::8] = 2
-        symbols[5::8] = 1
-        symbols[6::8] = 0
-        symbols[7::8] = -1
+        symbols[0::8] = 1
+        symbols[1::8] = 2
+        symbols[2::8] = 1
+        symbols[3::8] = 0
+        symbols[4::8] = -1
+        symbols[5::8] = -2
+        symbols[6::8] = -1
+        symbols[7::8] = 0
         return Pam5SymbolGenerator.add_zeros(symbols, prepend_zeros, append_zeros)
 
     @staticmethod

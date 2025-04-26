@@ -23,7 +23,7 @@ import os
 import numpy as np
 
 from fir_filter import FirFilterGenerator
-from generators.chipyard.src.main.resources.python.simulator.ethernet_channels import GenericEthernetCable
+from simulator.ethernet_channels import MolexCable
 
 
 np.set_printoptions(precision=4)
@@ -36,7 +36,7 @@ s = 128
 gen = FirFilterGenerator()
 
 
-taps = gen.calculate_taps(channel_profile=GenericEthernetCable, cable_length=50)
+taps = gen.calculate_taps(channel_profile=MolexCable, cable_length=50)
 
 # taps[:] = 0
 # taps[0] = 0.5

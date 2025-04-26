@@ -3,7 +3,7 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
-from generators.chipyard.src.main.resources.python.simulator.ethernet_channels import EthernetChannelProfile
+from simulator.ethernet_channels import EthernetChannelProfile
 
 
 np.set_printoptions(precision=4)

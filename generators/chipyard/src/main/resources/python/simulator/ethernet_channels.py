@@ -57,25 +57,26 @@ class EthernetChannel:
         self.cable_length = cable_length
 
     def attenuate(self, signal: np.ndarray) -> np.ndarray:
-        # attenuate the signal at each frequency
-        # Perform FFT to transform the signal to the frequency domain
-        signal_freq = np.fft.fft(signal)
-
-        # Create a frequency axis
-        freq_axis = np.fft.fftfreq(len(signal), d=1/self.cfg.sim_frequency_hz)
-
-        # Interpolate the attenuation values to match the frequency axis
-        attenuation_interp = np.interp(np.abs(freq_axis), self.freq_mhz * 1e6, self.attenuation_db)
-
-        # Convert attenuation from dB to linear scale
+        # Convert frequency response to time-domain FIR filter
+        # Create frequency response with proper phase
+        freq_axis = np.linspace(0, self.cfg.sim_frequency_hz/2, len(signal)//2 + 1)
+        attenuation_interp = np.interp(freq_axis, self.freq_mhz * 1e6, self.attenuation_db)
+        
+        # Convert to linear scale and add phase
         attenuation_linear = 10 ** (-attenuation_interp / 20)
-
-        # Apply the attenuation to the frequency domain signal
-        signal_freq_attenuated = signal_freq * attenuation_linear
-
-        # Transform the attenuated signal back to the time domain
-        signal_attenuated = np.fft.ifft(signal_freq_attenuated).real
-
+        freq_response = attenuation_linear * np.exp(-1j * np.pi * freq_axis / (self.cfg.sim_frequency_hz/2))
+        
+        # Create full frequency response (negative frequencies)
+        full_freq_response = np.concatenate([freq_response, np.conj(freq_response[-2:0:-1])])
+        
+        # Convert to time domain to get FIR filter coefficients
+        fir_coeffs = np.fft.ifft(full_freq_response).real
+        
+        # Apply causal FIR filter
+        # Pad signal with zeros to handle edge effects
+        padded_signal = np.pad(signal, (len(fir_coeffs)-1, 0), mode='constant')
+        signal_attenuated = np.convolve(padded_signal, fir_coeffs, mode='valid')
+        
         return signal_attenuated
 
 

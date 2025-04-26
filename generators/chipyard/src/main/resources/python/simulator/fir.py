@@ -8,11 +8,19 @@ from .config import SimConfig
 from .ethernet_channels import EthernetChannel
 
 class Fir:
-    def __init__(self, cfg: SimConfig, num_taps: int = 8, fir_type: int = 4):
+    def __init__(self,
+        cfg: SimConfig,
+        num_taps: int | None = None,
+        taps: np.ndarray | None = None,
+        fir_type: int = 4
+    ):
         self.cfg = cfg
-        self.num_taps = num_taps
         self.fir_type = fir_type
-        self.taps: np.ndarray = MISSING
+        self.taps: np.ndarray | None = taps
+        if self.taps is not None:
+            self.num_taps = self.taps.shape[0]
+        else:
+            self.num_taps = num_taps
 
     def calculate_taps(self, channel: EthernetChannel) -> np.ndarray:
         # nyquist frequency is twice the sampling frequency
@@ -153,3 +161,6 @@ class Fir:
             "indices": sampling_indices,
             "samples": samples,
         }
+
+    def filter(self, signal: np.ndarray):
+        return np.convolve(signal, self.taps, mode="full")
