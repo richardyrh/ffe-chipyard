@@ -15,28 +15,6 @@ import chipyard.example._
 import scala.io.Source
 
 
-object FFEUtils {
-  def readTapWeights(filename: String = "taps.hex", numTaps: Int = 8): Seq[Int] = {
-    try {
-      val source = Source.fromFile(filename)
-      val weights = source.getLines().map(line => Integer.parseInt(line.trim, 16)).take(numTaps).toSeq
-      source.close()
-      if (weights.length < numTaps) {
-        println(s"Warning: Only ${weights.length} weights found in $filename, padding with zeros")
-        weights ++ Seq.fill(numTaps - weights.length)(0)
-      } else {
-        println(s"Read $numTaps weights from $filename")
-        weights
-      }
-    } catch {
-      case e: Exception =>
-        println(s"Error reading tap weights from $filename: ${e.getMessage}")
-        println("Using default weights (all zeros)")
-        Seq.fill(numTaps)(0)
-    }
-  }
-}
-
 class WithFFETests extends Config((site, _, _) => { case UnitTests => (q: Parameters) => {
   implicit val p = q
   Seq(
@@ -45,8 +23,9 @@ class WithFFETests extends Config((site, _, _) => { case UnitTests => (q: Parame
         dataBits = 8,
         weightBits = 8,
         accBits = 8,
-        numTaps = 8,
-        initWeights = FFEUtils.readTapWeights("generators/chipyard/src/main/resources/memory/taps.hex"),
+        addedMSBs = 2,
+        numTaps = 7,
+        initWeights = Seq(-8, 8, -55, 127, -55, 8, -8),
         numChannels = 4,
         mmioAddr = 0x1000,
       ),

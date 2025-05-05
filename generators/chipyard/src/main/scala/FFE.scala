@@ -22,6 +22,7 @@ import scala.io.Source
   * @param dataBits - Number of bits in the input data
   * @param weightBits - Number of bits in the weights
   * @param accBits - Number of bits in the accumulator
+  * @param addedMSBs - Number of MSBs in the accumulator that used to accumulation overflow
   * @param numTaps - Number of taps in the filter
   * @param initWeights - Initial weights for the filter
   * @param numChannels - Number of channels (taps) in the filter
@@ -31,6 +32,7 @@ case class FFEParams(
   dataBits: Int = 8,
   weightBits: Int = 8,
   accBits: Int = 8,
+  addedMSBs: Int = 2,
   numTaps: Int = 8,
   initWeights: Seq[Int],
   numChannels: Int = 4,
@@ -57,7 +59,7 @@ case class FFEParams(
 class FirFilter(params: FFEParams) extends Module {
   def truncateProduct(x: SInt): SInt = {
     val maxBits = params.weightBits + params.dataBits
-    val prodBits = params.accBits - log2Ceil(params.numTaps)
+    val prodBits = params.accBits - params.addedMSBs
     (x.asTypeOf(UInt(maxBits.W)) >> (maxBits - prodBits)).asTypeOf(SInt(prodBits.W))
   }
 
@@ -67,31 +69,16 @@ class FirFilter(params: FFEParams) extends Module {
     val out = Output(SInt(params.accBits.W))
   })
 
-  val inStage1 = Seq.fill(4) {
-    val s1 = RegNext(io.in)
-    dontTouch(s1)
-    addAttribute(s1, "keep", "true")
-    s1
-  }
-
-  val inStage2 = inStage1.flatMap { s1 =>
-    Seq.fill(params.numTaps / 4) {
-      val s2 = WireInit((s1))
-      dontTouch(s2)
-      addAttribute(s2, "keep", "true")
-      s2
-    }
-  }
-  assert(inStage2.length == params.numTaps, "numTaps is not a multiple of 4")
+  val inStage1 = RegNext(io.in)
 
   val ys = WireInit(0.U.asTypeOf(Vec(params.numTaps, SInt(params.accBits.W))))
 
-  ys(0) := truncateProduct(io.weights(params.numTaps - 1) * inStage2(0)).asTypeOf(ys(0).cloneType)
-  
+  ys(0) := truncateProduct(io.weights(params.numTaps - 1) * inStage1).asTypeOf(ys(0).cloneType)
+
   for (i <- 1 until params.numTaps) {
-    ys(i) := RegNext(ys(i - 1)) + truncateProduct(io.weights(params.numTaps - i - 1) * inStage2(i))
+    ys(i) := RegNext(ys(i - 1)) + truncateProduct(io.weights(params.numTaps - i - 1) * inStage1)
   }
-  
+
   io.out := RegNext(ys.last)
 }
 
@@ -151,9 +138,9 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
       ))
     ),
   ))
-  
+
   val ffe = LazyModule(new FFE(params))
-  
+
   ffe.regNode := TLIdentityNode() := node
 
   lazy val module = new LazyModuleImp(this) with UnitTestModule {
@@ -184,17 +171,17 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
         Integer.parseInt(line.trim, 16).S(params.weightBits.W)
       })
     })
-    
-  
+
+
     val (sim_counter, _) = Counter(true.B, 10000)
     val (test_sequence_counter, _) = Counter(true.B, ffe_inputs.length)
 
-    
+
     ffe.module.io.in.bits := ffe_inputs(test_sequence_counter)
     ffe.module.io.in.valid := true.B
 
     val (n, e) = node.out.head
-    
+
     val (legal, a) = e.Put(
       fromSource = 0.U,
       toAddress = (params.mmioAddr + 0).U,
@@ -206,7 +193,7 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
     n.a.bits := a
     n.a.valid := (sim_counter === 20.U)
     n.d.ready := true.B
-    
+
     dontTouch(n.a)
     dontTouch(n.d)
 
