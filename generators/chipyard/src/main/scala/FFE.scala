@@ -56,6 +56,7 @@ class FirFilter(params: FFEParams) extends Module {
     val in = Input(SInt(params.dataBits.W))
     val weights = Input(Vec(params.numTaps, SInt(params.weightBits.W)))
     val out = Output(SInt(params.accBits.W))
+    val out_trunc = Output(SInt(params.dataBits.W))
   })
 
   val ys = Wire(Vec(params.numTaps, SInt(params.accBits.W)))
@@ -67,8 +68,11 @@ class FirFilter(params: FFEParams) extends Module {
   }
   
   io.out := RegNext(ys(params.numTaps - 1))
+  io.out_trunc := io.out(params.dataBits - 1, 0)
 }
 
+
+// TODO (from 04-18 bora meeting): truncate the 18 bit output to 5/6 bits, test with PAM5 encoding to see SNR (can be done in Python)
 
 class FFE(params: FFEParams)(implicit p: Parameters) extends LazyModule {
   val device = new SimpleDevice("ffe", Nil)
