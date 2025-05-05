@@ -146,7 +146,7 @@ class FFE(params: FFEParams)(implicit p: Parameters) extends LazyModule {
   }
 }
 
-class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extends LazyModule {
+class FFETestTop(params: FFEParams, timeout: Int, power: Boolean)(implicit p: Parameters) extends LazyModule {
   // define client
   val node = TLClientNode(Seq(
     TLMasterPortParameters.v2(
@@ -193,9 +193,13 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
 
     val (sim_counter, _) = Counter(true.B, 10000)
     val (test_sequence_counter, _) = Counter(true.B, ffe_inputs.length)
+    val (powerSeqCounter, _) = Counter(true.B, 5)
 
+    val fuzzInputs = VecInit(Seq(-127, -63, 0, 63, 127).map(_.S(8.W)))
 
-    ffe.module.io.in.bits := ffe_inputs(test_sequence_counter)
+    ffe.module.io.in.bits := Mux(power.B,
+      VecInit.fill(params.numChannels)(fuzzInputs(powerSeqCounter)),
+      ffe_inputs(test_sequence_counter))
     ffe.module.io.in.valid := true.B
 
     val (n, e) = node.out.head
@@ -209,30 +213,33 @@ class FFETestTop(params: FFEParams, timeout: Int)(implicit p: Parameters) extend
     assert(legal)
 
     n.a.bits := a
-    n.a.valid := (sim_counter === 20.U)
+    n.a.valid := (sim_counter === 20.U) && !power.B
     n.d.ready := true.B
 
     dontTouch(n.a)
     dontTouch(n.d)
 
 
-    (0 until params.numChannels).foreach(ch => {
-      val dutBits = ffe.module.io.out.bits(ch)
-      val goldenBits = ffe_golden(test_sequence_counter)(ch)
-      when (sim_counter === test_sequence_counter) {
-        assert(dutBits === goldenBits.asTypeOf(dutBits.cloneType),
-              "At step %d, channel %d: Expected %x, got %x",
-              sim_counter.asUInt, ch.asUInt, goldenBits, dutBits)
-      }
-    })
+    if (!power) {
+      (0 until params.numChannels).foreach(ch => {
+        val dutBits = ffe.module.io.out.bits(ch)
+        val goldenBits = ffe_golden(test_sequence_counter)(ch)
+        when (sim_counter === test_sequence_counter) {
+          assert(dutBits === goldenBits.asTypeOf(dutBits.cloneType),
+            "At step %d, channel %d: Expected %x, got %x",
+            sim_counter.asUInt, ch.asUInt, goldenBits, dutBits)
+        }
+      })
+    }
 
     val (timeout_counter, _) = Counter(true.B, timeout + 1)
     io.finished := (timeout_counter === timeout.U)
   }
 }
 
-class FFETest(params: FFEParams, timeout: Int)(implicit p: Parameters) extends UnitTest(timeout) {
-  val dut = Module(LazyModule(new FFETestTop(params, timeout)).module)
+class FFETest(params: FFEParams, timeout: Int, power: Boolean = false)
+    (implicit p: Parameters) extends UnitTest(timeout) {
+  val dut = Module(LazyModule(new FFETestTop(params, timeout, power)).module)
   dut.io.start := io.start
   io.finished := dut.io.finished
 }
