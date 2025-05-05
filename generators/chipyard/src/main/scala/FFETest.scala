@@ -23,9 +23,10 @@ class WithFFETests extends Config((site, _, _) => { case UnitTests => (q: Parame
         dataBits = 8,
         weightBits = 8,
         accBits = 8,
-        addedMSBs = 2,
+        addedMSBs = -2,
         numTaps = 7,
-        initWeights = Seq(-8, 8, -55, 127, -55, 8, -8),
+        // initWeights = Seq(-8, 8, -55, 127, -55, 8, -8), // 200m
+        initWeights = Seq(-6, 1, -32, 127, -32, 1, -6), // 100m
         numChannels = 4,
         mmioAddr = 0x1000,
       ),

@@ -32,7 +32,7 @@ case class FFEParams(
   dataBits: Int = 8,
   weightBits: Int = 8,
   accBits: Int = 8,
-  addedMSBs: Int = 2,
+  addedMSBs: Int = 0,
   numTaps: Int = 8,
   initWeights: Seq[Int],
   numChannels: Int = 4,
@@ -63,6 +63,26 @@ class FirFilter(params: FFEParams) extends Module {
     (x.asTypeOf(UInt(maxBits.W)) >> (maxBits - prodBits)).asTypeOf(SInt(prodBits.W))
   }
 
+  def satAdd(a: SInt, b: SInt, width: Int): SInt = {
+    if ((a.getWidth max b.getWidth) < width) {
+      a +& b
+    } else {
+      val sum = Wire(SInt((width + 1).W))
+      sum := a +& b // Addition with extra bit for overflow detection
+
+      val maxVal = (BigInt(1) << (width - 1)) - 1
+      val minVal = -(BigInt(1) << (width - 1))
+
+      val satMax = maxVal.S(width.W)
+      val satMin = minVal.S(width.W)
+
+      MuxCase(sum(width - 1, 0).asSInt, Seq(
+        (sum > satMax) -> satMax,
+        (sum < satMin) -> satMin
+      ))
+    }
+  }
+
   val io = IO(new Bundle {
     val in = Input(SInt(params.dataBits.W))
     val weights = Input(Vec(params.numTaps, SInt(params.weightBits.W)))
@@ -76,7 +96,9 @@ class FirFilter(params: FFEParams) extends Module {
   ys(0) := truncateProduct(io.weights(params.numTaps - 1) * inStage1).asTypeOf(ys(0).cloneType)
 
   for (i <- 1 until params.numTaps) {
-    ys(i) := RegNext(ys(i - 1)) + truncateProduct(io.weights(params.numTaps - i - 1) * inStage1)
+    ys(i) := satAdd(RegNext(ys(i - 1)),
+      truncateProduct(io.weights(params.numTaps - i - 1) * inStage1),
+      params.accBits)
   }
 
   io.out := RegNext(ys.last)
