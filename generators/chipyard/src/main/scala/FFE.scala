@@ -64,23 +64,19 @@ class FirFilter(params: FFEParams) extends Module {
   }
 
   def satAdd(a: SInt, b: SInt, width: Int): SInt = {
-    if ((a.getWidth max b.getWidth) < width) {
-      a +& b
-    } else {
-      val sum = Wire(SInt((width + 1).W))
-      sum := a +& b // Addition with extra bit for overflow detection
+    val sum = Wire(SInt((width + 1).W))
+    sum := a +& b // Addition with extra bit for overflow detection
 
-      val maxVal = (BigInt(1) << (width - 1)) - 1
-      val minVal = -(BigInt(1) << (width - 1))
+    val maxVal = (BigInt(1) << (width - 1)) - 1
+    val minVal = -(BigInt(1) << (width - 1))
 
-      val satMax = maxVal.S(width.W)
-      val satMin = minVal.S(width.W)
+    val satMax = maxVal.S(width.W)
+    val satMin = minVal.S(width.W)
 
-      MuxCase(sum(width - 1, 0).asSInt, Seq(
-        (sum > satMax) -> satMax,
-        (sum < satMin) -> satMin
-      ))
-    }
+    MuxCase(sum(width - 1, 0).asSInt, Seq(
+      (sum > satMax) -> satMax,
+      (sum < satMin) -> satMin
+    ))
   }
 
   val io = IO(new Bundle {
