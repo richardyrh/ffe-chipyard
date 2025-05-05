@@ -15,10 +15,10 @@ np.random.seed(42)
 cfg = SimConfig()
 
 n_symbols = 10
-ignore_delay = False
+ignore_delay = True
 sampling_offset = 0.7
 
-thresholds = np.array([-0.4, -0.2, 0.2, 0.4])
+thresholds = np.array([-0.3, -0.1, 0.1, 0.3])
 
 # === create data to send, in range {-2, -1, 0, 1, 2} ===
 
@@ -26,8 +26,8 @@ thresholds = np.array([-0.4, -0.2, 0.2, 0.4])
 # data = Pam5SymbolGenerator.dc(n_symbols, 1)
 # data = Pam5SymbolGenerator.alternate_01(n_symbols)
 # data = Pam5SymbolGenerator.alternate_02(n_symbols)
-data = Pam5SymbolGenerator.alternate_012(n_symbols)
-# data = Pam5SymbolGenerator.sawtooth_wave(n_symbols)
+# data = Pam5SymbolGenerator.alternate_012(n_symbols)
+data = Pam5SymbolGenerator.sawtooth_wave(n_symbols)
 # data = Pam5SymbolGenerator.sine_wave(n_symbols)
 
 
@@ -36,17 +36,13 @@ print("data:", data)
 
 
 tx = SimTransmitter(cfg)
-channel = EthernetChannel(cfg, MolexCable, cable_length=100)
 adc = Adc(cfg)
+channel = EthernetChannel(cfg, MolexCable, cable_length=100)
 
 # fir = Fir(cfg)
 fir = Fir(
     cfg,
-#     taps=np.array([ 0.0026,  0.0166,  0.0532,  0.5011, -0.5011, -0.0532, -0.0166, -0.0026])
-    # taps=np.array([  0.616,  0.,     0.,     0.535, -0.535, -0.,     0.,    -0.616])
-    # taps=np.array([-1.,     1.,     0.778, -1.,    -0.111,  0.556, -1.,     0.333])
-    # taps=np.array([ 0.2, -0.5,  0.7, -0.1,  0.1, -0.7,  0.5, -0.2]),
-    taps=np.array([  0.04, -0.1,   0.22,  0.26, -0.26, -0.22,  0.1,  -0.04])
+    taps=np.array([ 0.0026,  0.0166,  0.0532,  0.5011, -0.5011, -0.0532, -0.0166, -0.0026])
 )
 
 signals = tx.generate_signal(symbols=data, ignore_delay=ignore_delay)
@@ -66,11 +62,10 @@ samples = adc.sample(signals["attenuated_signal_rescaled"], sampling_point=sampl
 
 samples["filtered"] = fir.filter(samples["samples"])
 
-if ignore_delay:
-    delay = 3
-    samples["filtered"] = samples["filtered"][delay:]
+delay = 3
 
-samples["filtered"] = samples["filtered"][:samples["samples"].shape[0]]
+samples["filtered"] = samples["filtered"][delay:-(fir.num_taps-1-delay)]
+
 
 reconstructed_data = np.zeros_like(samples["filtered"])
 for i in range(samples["filtered"].shape[0]):
@@ -85,10 +80,8 @@ for i in range(samples["filtered"].shape[0]):
     else:
         reconstructed_data[i] = 2
 
-calc_delay = 2
-
 valid_data = data[10:-10]
-valid_reconstructed_data = reconstructed_data[10+calc_delay:][:valid_data.shape[0]]
+valid_reconstructed_data = reconstructed_data[9:-10]
 
 loss = np.sum(np.abs(valid_data != valid_reconstructed_data)) / len(valid_data)
 
@@ -100,8 +93,6 @@ print("loss:", loss)
 total_gain = 1
 
 samples["filtered"] *= total_gain
-
-samples["filtered"] = np.concatenate([samples["filtered"][3:], np.zeros(3)])
 
 samples["filtered_time"] = np.repeat(samples["filtered"], cfg.sim_frequency_hz // cfg.symbol_frequency_hz)
 samples["filtered_time"] = np.concatenate([np.zeros(samples["indices"][0] // 2), samples["filtered_time"], np.zeros(samples["indices"][0] // 2)])[:len(signals["time_s"])]
@@ -131,5 +122,16 @@ ax.set_ylim(-1.1, 1.1)
 ax.legend()
 
 fig.savefig("simulation.png")
+
+
+
+
+
+
+
+
+
+
+
 
 

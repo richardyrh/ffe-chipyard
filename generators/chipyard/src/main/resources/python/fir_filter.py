@@ -3,6 +3,8 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
+from simulator.ethernet_channels import EthernetChannelProfile
+
 
 np.set_printoptions(precision=4)
 
@@ -51,10 +53,11 @@ class FirFilterGenerator:
         """
         return data.astype(np.float32) / scale
     
-    def calculate_taps(self) -> np.ndarray:
+    def calculate_taps(self, channel_profile: EthernetChannelProfile, cable_length: float = 100) -> np.ndarray:
         """
         Calculates the taps for the FIR filter.
         """
+        self.cable_length = cable_length
         # Original frequency and attenuation data
         freq_MHz = np.array([0, 1, 4, 8, 10, 16, 20, 25, 31.25, 62.5])
         attenuation_dB = np.array([0, 2.0, 3.8, 5.3, 6.0, 7.6, 8.5, 9.5, 10.7, 15.4])
