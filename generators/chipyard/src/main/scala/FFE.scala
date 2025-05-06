@@ -60,7 +60,15 @@ class FirFilter(params: FFEParams) extends Module {
   def truncateProduct(x: SInt): SInt = {
     val maxBits = params.weightBits + params.dataBits
     val prodBits = params.accBits - params.addedMSBs
-    (x.asTypeOf(UInt(maxBits.W)) >> (maxBits - prodBits)).asTypeOf(SInt(prodBits.W))
+    val unsatProd = x.asTypeOf(SInt(maxBits.W)) >> (maxBits - prodBits)
+
+    val satMax = ((BigInt(1) << (prodBits - 1)) - 1).S(prodBits.W)
+    val satMin = (-(BigInt(1) << (prodBits - 1))).S(prodBits.W)
+
+    MuxCase(unsatProd.asTypeOf(SInt(prodBits.W)), Seq(
+      (unsatProd > satMax) -> satMax,
+      (unsatProd < satMin) -> satMin
+    ))
   }
 
   def satAdd(a: SInt, b: SInt, width: Int): SInt = {
@@ -101,7 +109,7 @@ class FirFilter(params: FFEParams) extends Module {
 }
 
 
-class FFE(params: FFEParams)(implicit p: Parameters) extends LazyModule {
+class FFE(params: FFEParams, power: Boolean)(implicit p: Parameters) extends LazyModule {
   val device = new SimpleDevice("ffe", Nil)
   val regNode = TLRegisterNode(Seq(AddressSet(params.mmioAddr, 0xff)), device, beatBytes=8, concurrency=0)
 
@@ -115,8 +123,14 @@ class FFE(params: FFEParams)(implicit p: Parameters) extends LazyModule {
 
     dontTouch(io)
 
-    val weightRegs = params.initWeights.map(x => RegInit(x.S(params.weightBits.W).asUInt))
+    val weightRegs = params.initWeights.map(x => RegInit((if (power) {
+      0
+    } else {
+      x
+    }).S(params.weightBits.W).asUInt))
+
     val weightRegFns = weightRegs.zipWithIndex.map { case (reg, idx) =>
+      addAttribute(reg, "dont_touch", "yes")
       (valid: Bool, bits: UInt) => {
         when (valid) {
           printf("ffe tap %d set to %d\n", idx.U, bits)
@@ -134,6 +148,7 @@ class FFE(params: FFEParams)(implicit p: Parameters) extends LazyModule {
 
     val _firFilters = Seq.tabulate(params.numChannels) { ch =>
       val firFilter = Module(new FirFilter(params))
+      addAttribute(firFilter, "dont_touch", "yes")
       firFilter.io.in := io.in.bits(ch)
       firFilter.io.weights := VecInit(weightRegs).asTypeOf(firFilter.io.weights.cloneType)
       io.out.bits(ch) := firFilter.io.out
@@ -157,7 +172,7 @@ class FFETestTop(params: FFEParams, timeout: Int, power: Boolean)(implicit p: Pa
     ),
   ))
 
-  val ffe = LazyModule(new FFE(params))
+  val ffe = LazyModule(new FFE(params, power))
 
   ffe.regNode := TLIdentityNode() := node
 
@@ -210,12 +225,30 @@ class FFETestTop(params: FFEParams, timeout: Int, power: Boolean)(implicit p: Pa
       fromSource = 0.U,
       toAddress = (params.mmioAddr + 0).U,
       lgSize = 3.U,
-      data = VecInit(ffe_weights.map(_.asUInt + 1.U)).asUInt
+      data = VecInit(ffe_weights.map(_.asUInt)).asUInt
     )
     assert(legal)
 
-    n.a.bits := a
-    n.a.valid := Mux(power.B, io.finished, sim_counter === 20.U)
+
+    if (power) {
+      val (_, powerA) = e.Put(
+        fromSource = 0.U,
+        toAddress = (params.mmioAddr + 0).U,
+        lgSize = 3.U,
+        data = MuxCase(
+          VecInit(params.initWeights.map(x => x.S(params.weightBits.W))).asUInt,
+          Seq(
+            (sim_counter === 20.U) -> 0.U,
+            (sim_counter === 22.U) -> x"ffffffffffffffff".U,
+          )
+        )
+      )
+      n.a.bits := powerA
+      n.a.valid := (sim_counter === 20.U) || (sim_counter === 22.U) || (sim_counter === 24.U)
+    } else {
+      n.a.bits := a
+      n.a.valid := (sim_counter === 20.U)
+    }
     n.d.ready := true.B
 
     dontTouch(n.a)
