@@ -252,7 +252,7 @@ class FFETest(params: FFEParams, timeout: Int, power: Boolean = false)
   dut.io.start := io.start
 
   val ttDutOut = dut.dutOut
-  val reduced = if (power) VecInit(ttDutOut.asBools).reduceTree(_ || _) else true.B
+  val reduced = if (power) VecInit(ttDutOut.asBools).reduceTree(_ ^ _) else true.B
   io.finished := dut.io.finished && reduced
 
 }
