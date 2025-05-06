@@ -50,10 +50,22 @@ class FFETestConfig extends Config(
   new WithFFETests(8, false) ++
   new BaseSubsystemConfig)
 
+class FFE7bAccTestConfig extends Config(
+  new WithFFETests(7, false) ++
+  new BaseSubsystemConfig)
+
+class FFE9bAccTestConfig extends Config(
+  new WithFFETests(9, false) ++
+  new BaseSubsystemConfig)
+
 class FFEPowerConfig extends Config(
   new WithFFETests(8, true) ++
   new BaseSubsystemConfig)
 
 class FFE7bAccPowerConfig extends Config(
   new WithFFETests(7, true) ++
+  new BaseSubsystemConfig)
+
+class FFE9bAccPowerConfig extends Config(
+  new WithFFETests(9, true) ++
   new BaseSubsystemConfig)
