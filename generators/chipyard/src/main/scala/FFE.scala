@@ -161,7 +161,9 @@ class FFETestTop(params: FFEParams, timeout: Int, power: Boolean)(implicit p: Pa
 
   ffe.regNode := TLIdentityNode() := node
 
-  lazy val module = new LazyModuleImp(this) with UnitTestModule {
+  override lazy val module = new FFETestTopImpl(this)
+
+  class FFETestTopImpl(outer: FFETestTop) extends LazyModuleImp(outer) with UnitTestModule {
     val ffe_inputs = VecInit({
       val fileSource = scala.io.Source.fromFile("generators/chipyard/src/main/resources/memory/ffe_in.hex")
       val lines = try fileSource.getLines().toArray finally fileSource.close()
@@ -234,6 +236,14 @@ class FFETestTop(params: FFEParams, timeout: Int, power: Boolean)(implicit p: Pa
 
     val (timeout_counter, _) = Counter(true.B, timeout + 1)
     io.finished := (timeout_counter === timeout.U)
+
+    val dutOut = if (power) {
+      val dutOut = IO(Output(ffe.module.io.out.asUInt.cloneType))
+      dutOut := ffe.module.io.out.asUInt
+      Some(dutOut)
+    } else {
+      None
+    }
   }
 }
 
@@ -242,4 +252,10 @@ class FFETest(params: FFEParams, timeout: Int, power: Boolean = false)
   val dut = Module(LazyModule(new FFETestTop(params, timeout, power)).module)
   dut.io.start := io.start
   io.finished := dut.io.finished
+
+  if (power) {
+    val ttDutOut = dut.dutOut.get
+    val dutOut = IO(Output(ttDutOut.cloneType))
+    dutOut := ttDutOut
+  }
 }
