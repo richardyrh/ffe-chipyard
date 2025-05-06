@@ -215,7 +215,7 @@ class FFETestTop(params: FFEParams, timeout: Int, power: Boolean)(implicit p: Pa
     assert(legal)
 
     n.a.bits := a
-    n.a.valid := (sim_counter === 20.U) && !power.B
+    n.a.valid := Mux(power.B, io.finished, sim_counter === 20.U)
     n.d.ready := true.B
 
     dontTouch(n.a)
@@ -252,7 +252,7 @@ class FFETest(params: FFEParams, timeout: Int, power: Boolean = false)
   dut.io.start := io.start
 
   val ttDutOut = dut.dutOut
-  val reduced = if (power) VecInit(ttDutOut.asBools).reduceTree(_ || _) else true.B
+  val reduced = if (power) VecInit(ttDutOut.asBools).reduceTree(_ ^ _) else true.B
   io.finished := dut.io.finished && reduced
 
 }
