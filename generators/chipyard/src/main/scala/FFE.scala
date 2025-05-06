@@ -237,12 +237,11 @@ class FFETestTop(params: FFEParams, timeout: Int, power: Boolean)(implicit p: Pa
     val (timeout_counter, _) = Counter(true.B, timeout + 1)
     io.finished := (timeout_counter === timeout.U)
 
-    val dutOut = if (power) {
-      val dutOut = IO(Output(ffe.module.io.out.asUInt.cloneType))
+    val dutOut = IO(Output(ffe.module.io.out.asUInt.cloneType))
+    if (power) {
       dutOut := ffe.module.io.out.asUInt
-      Some(dutOut)
     } else {
-      None
+      dutOut <> DontCare
     }
   }
 }
@@ -251,11 +250,9 @@ class FFETest(params: FFEParams, timeout: Int, power: Boolean = false)
     (implicit p: Parameters) extends UnitTest(timeout) {
   val dut = Module(LazyModule(new FFETestTop(params, timeout, power)).module)
   dut.io.start := io.start
-  io.finished := dut.io.finished
 
-  if (power) {
-    val ttDutOut = dut.dutOut.get
-    val dutOut = IO(Output(ttDutOut.cloneType))
-    dutOut := ttDutOut
-  }
+  val ttDutOut = dut.dutOut
+  val reduced = if (power) VecInit(ttDutOut.asBools).reduceTree(_ || _) else true.B
+  io.finished := dut.io.finished && reduced
+
 }
